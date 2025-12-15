@@ -43,7 +43,12 @@ export default function App() {
     const storedUser = localStorage.getItem('sandpix_user');
     if (storedUser) {
       try {
-        setCurrentUser(JSON.parse(storedUser));
+        const user = JSON.parse(storedUser);
+        setCurrentUser(user);
+        // Redirect viewers to invoices view by default as they don't have dashboard access
+        if (user.role === 'viewer') {
+          setView({ type: 'invoices' });
+        }
       } catch (e) {
         localStorage.removeItem('sandpix_user');
       }
@@ -126,6 +131,10 @@ export default function App() {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     localStorage.setItem('sandpix_user', JSON.stringify(user));
+    // Redirect viewers directly to invoices
+    if (user.role === 'viewer') {
+      setView({ type: 'invoices' });
+    }
   };
 
   const handleLogout = () => {
@@ -301,6 +310,7 @@ export default function App() {
           onView={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview' })}
           onDownload={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview', autoPrint: true })}
           onDelete={handleDeleteInvoice}
+          currentUser={currentUser!}
         />;
       case 'invoice-editor':
         const initialData = view.invoiceId ? invoices.find(i => i.id === view.invoiceId) : null;
@@ -312,6 +322,7 @@ export default function App() {
           isSaving={loading}
           initialMode={view.mode || 'edit'}
           autoPrint={view.autoPrint}
+          currentUser={currentUser!}
         />;
       case 'reports':
         return <Reports invoices={invoices} currency={settings.currencySymbol} />;
@@ -345,6 +356,8 @@ export default function App() {
     );
   }
 
+  const isViewer = currentUser.role === 'viewer';
+
   return (
     <div className="flex h-screen bg-gray-100">
       
@@ -366,9 +379,11 @@ export default function App() {
           <div className="px-4 py-2 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
              Menu
           </div>
-          <button onClick={() => setView({ type: 'dashboard' })} className={navItemClass(view.type === 'dashboard')}>
-            <LayoutDashboardIcon /> Dashboard
-          </button>
+          {!isViewer && (
+            <button onClick={() => setView({ type: 'dashboard' })} className={navItemClass(view.type === 'dashboard')}>
+              <LayoutDashboardIcon /> Dashboard
+            </button>
+          )}
           <button onClick={() => setView({ type: 'invoices' })} className={navItemClass(view.type === 'invoices')}>
             <FileTextIcon /> Invoices
           </button>
@@ -376,15 +391,19 @@ export default function App() {
             <BarChartIcon /> Reports
           </button>
           
-          <div className="px-4 py-2 mt-6 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-             Administration
-          </div>
-          <button onClick={() => setView({ type: 'users' })} className={navItemClass(view.type === 'users')}>
-            <UsersIcon /> Team
-          </button>
-           <button onClick={() => setView({ type: 'settings' })} className={navItemClass(view.type === 'settings')}>
-            <SettingsIcon /> Settings
-          </button>
+          {!isViewer && (
+            <>
+              <div className="px-4 py-2 mt-6 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                 Administration
+              </div>
+              <button onClick={() => setView({ type: 'users' })} className={navItemClass(view.type === 'users')}>
+                <UsersIcon /> Team
+              </button>
+               <button onClick={() => setView({ type: 'settings' })} className={navItemClass(view.type === 'settings')}>
+                <SettingsIcon /> Settings
+              </button>
+            </>
+          )}
         </nav>
         
         <div className="p-4 border-t border-white/10">

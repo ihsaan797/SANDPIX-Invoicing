@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { InvoiceData, InvoiceItem, AppSettings } from '../types';
+import { InvoiceData, InvoiceItem, AppSettings, User } from '../types';
 import { PrinterIcon, PlusIcon, TrashIcon, PalmTreeIcon, ChevronLeftIcon, EyeIcon, EditIcon, DownloadIcon, MailIcon } from '../components/Icons';
 
 interface InvoiceEditorProps {
@@ -10,9 +10,12 @@ interface InvoiceEditorProps {
   isSaving?: boolean;
   initialMode?: 'edit' | 'preview';
   autoPrint?: boolean;
+  currentUser: User;
 }
 
-export default function InvoiceEditor({ initialData, settings, onSave, onBack, isSaving = false, initialMode = 'edit', autoPrint = false }: InvoiceEditorProps) {
+export default function InvoiceEditor({ initialData, settings, onSave, onBack, isSaving = false, initialMode = 'edit', autoPrint = false, currentUser }: InvoiceEditorProps) {
+  const isViewer = currentUser.role === 'viewer';
+  
   const defaultInvoice: InvoiceData = {
     id: crypto.randomUUID(),
     invoiceNumber: `INV-${Math.floor(Math.random() * 10000)}`,
@@ -32,11 +35,16 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
   };
 
   const [data, setData] = useState<InvoiceData>(initialData || defaultInvoice);
-  const [isPreview, setIsPreview] = useState(initialMode === 'preview');
+  // Viewers are always in preview mode
+  const [isPreview, setIsPreview] = useState(isViewer ? true : initialMode === 'preview');
 
   useEffect(() => {
-    setIsPreview(initialMode === 'preview');
-  }, [initialMode]);
+    if (isViewer) {
+      setIsPreview(true);
+    } else {
+      setIsPreview(initialMode === 'preview');
+    }
+  }, [initialMode, isViewer]);
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -75,10 +83,12 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
   }, [autoPrint, handleDownloadPDF]);
 
   const handleChange = (field: keyof InvoiceData, value: string | number) => {
+    if (isViewer) return;
     setData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleItemChange = (id: string, field: keyof InvoiceItem, value: string | number) => {
+    if (isViewer) return;
     setData((prev) => ({
       ...prev,
       items: prev.items.map((item) =>
@@ -88,6 +98,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
   };
 
   const addItem = () => {
+    if (isViewer) return;
     const newItem: InvoiceItem = {
       id: crypto.randomUUID(),
       description: '',
@@ -98,6 +109,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
   };
 
   const removeItem = (id: string) => {
+    if (isViewer) return;
     setData((prev) => ({ ...prev, items: prev.items.filter((item) => item.id !== id) }));
   };
 
@@ -165,24 +177,26 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
           {isPreview && <div></div>}
 
           <div className="flex gap-2 ml-auto">
-             {/* Toggle Preview Button */}
-            <button
-               onClick={() => setIsPreview(!isPreview)}
-               disabled={isSaving}
-               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
-            >
-               {isPreview ? (
-                 <>
-                   <EditIcon className="w-4 h-4" />
-                   Edit
-                 </>
-               ) : (
-                 <>
-                   <EyeIcon className="w-4 h-4" />
-                   Preview
-                 </>
-               )}
-            </button>
+             {/* Toggle Preview Button - Hidden for viewers */}
+            {!isViewer && (
+              <button
+                 onClick={() => setIsPreview(!isPreview)}
+                 disabled={isSaving}
+                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+              >
+                 {isPreview ? (
+                   <>
+                     <EditIcon className="w-4 h-4" />
+                     Edit
+                   </>
+                 ) : (
+                   <>
+                     <EyeIcon className="w-4 h-4" />
+                     Preview
+                   </>
+                 )}
+              </button>
+            )}
 
              {/* Send Email Button */}
             <button
@@ -215,8 +229,8 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
               Print
             </button>
             
-            {/* Save Button (Edit Mode Only) */}
-            {!isPreview && (
+            {/* Save Button (Edit Mode Only and NOT viewer) */}
+            {!isPreview && !isViewer && (
               <button
                 onClick={() => onSave(data)}
                 disabled={isSaving}
@@ -272,7 +286,8 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                     type="text"
                     value={data.invoiceNumber}
                     onChange={(e) => handleChange('invoiceNumber', e.target.value)}
-                    className="text-right font-mono font-bold text-gray-800 bg-gray-50 hover:bg-white focus:bg-white border-b border-transparent hover:border-gray-300 focus:border-sandpix-500 focus:outline-none px-2 py-1 w-32 transition-colors"
+                    disabled={isViewer}
+                    className="text-right font-mono font-bold text-gray-800 bg-gray-50 hover:bg-white focus:bg-white border-b border-transparent hover:border-gray-300 focus:border-sandpix-500 focus:outline-none px-2 py-1 w-32 transition-colors disabled:bg-transparent"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -281,7 +296,8 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                     type="date"
                     value={data.date}
                     onChange={(e) => handleChange('date', e.target.value)}
-                    className="text-right font-mono text-gray-600 bg-gray-50 hover:bg-white focus:bg-white border-b border-transparent hover:border-gray-300 focus:border-sandpix-500 focus:outline-none px-2 py-1 w-32 transition-colors"
+                    disabled={isViewer}
+                    className="text-right font-mono text-gray-600 bg-gray-50 hover:bg-white focus:bg-white border-b border-transparent hover:border-gray-300 focus:border-sandpix-500 focus:outline-none px-2 py-1 w-32 transition-colors disabled:bg-transparent"
                   />
                 </div>
                 <div className={`flex items-center gap-2 ${editOnlyClass}`}>
@@ -289,6 +305,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                    <select
                     value={data.status}
                     onChange={(e) => handleChange('status', e.target.value)}
+                    disabled={isViewer}
                     className="text-right font-mono text-xs font-bold uppercase bg-gray-50 border-none rounded p-1 text-gray-600 focus:ring-0"
                    >
                      <option value="draft">Draft</option>
@@ -318,12 +335,14 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                   placeholder="Client Name"
                   value={data.clientName}
                   onChange={(e) => handleChange('clientName', e.target.value)}
+                  disabled={isViewer}
                   className="w-full font-bold text-gray-900 placeholder-gray-300 focus:outline-none border-b border-gray-200 focus:border-sandpix-500 py-1 transition-colors bg-transparent"
                 />
                 <textarea
                   placeholder="Client Address"
                   value={data.clientAddress}
                   onChange={(e) => handleChange('clientAddress', e.target.value)}
+                  disabled={isViewer}
                   rows={3}
                   className="w-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none border-b border-gray-200 focus:border-sandpix-500 py-1 transition-colors resize-none bg-transparent"
                 />
@@ -332,6 +351,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                   placeholder="client@email.com"
                   value={data.clientEmail}
                   onChange={(e) => handleChange('clientEmail', e.target.value)}
+                  disabled={isViewer}
                   className="w-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none border-b border-gray-200 focus:border-sandpix-500 py-1 transition-colors bg-transparent"
                 />
               </div>
@@ -356,6 +376,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                     <textarea
                       value={item.description}
                       onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                      disabled={isViewer}
                       placeholder="Item description"
                       rows={1}
                       className="w-full text-sm text-gray-800 placeholder-gray-300 focus:outline-none border-b border-transparent hover:border-gray-200 focus:border-sandpix-500 py-1 bg-transparent resize-none overflow-hidden"
@@ -373,6 +394,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                       type="number"
                       value={item.quantity}
                       onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                      disabled={isViewer}
                       className="w-full text-right text-sm text-gray-600 focus:outline-none border-b border-transparent hover:border-gray-200 focus:border-sandpix-500 py-1 bg-transparent"
                     />
                   </div>
@@ -383,6 +405,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                       type="number"
                       value={item.rate}
                       onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
+                      disabled={isViewer}
                       className="w-full text-right text-sm text-gray-600 focus:outline-none border-b border-transparent hover:border-gray-200 focus:border-sandpix-500 py-1 bg-transparent"
                     />
                   </div>
@@ -394,26 +417,30 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                     </span>
                   </div>
 
-                  {/* Delete Button (Hidden on Print & Preview) */}
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className={`absolute -right-6 top-1.5 p-1 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ${editOnlyClass}`}
-                    title="Remove item"
-                  >
-                    <TrashIcon />
-                  </button>
+                  {/* Delete Button (Hidden on Print & Preview & Viewer) */}
+                  {!isViewer && (
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className={`absolute -right-6 top-1.5 p-1 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ${editOnlyClass}`}
+                      title="Remove item"
+                    >
+                      <TrashIcon />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
 
             <div className={`mt-6 ${editOnlyClass}`}>
-              <button
-                onClick={addItem}
-                className="flex items-center gap-2 text-sm font-semibold text-sandpix-600 hover:text-sandpix-700 transition-colors"
-              >
-                <PlusIcon className="w-4 h-4" />
-                Add Line Item
-              </button>
+              {!isViewer && (
+                <button
+                  onClick={addItem}
+                  className="flex items-center gap-2 text-sm font-semibold text-sandpix-600 hover:text-sandpix-700 transition-colors"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add Line Item
+                </button>
+              )}
             </div>
           </div>
 
@@ -432,6 +459,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                       type="number"
                       value={data.taxRate}
                       onChange={(e) => handleChange('taxRate', parseFloat(e.target.value) || 0)}
+                      disabled={isViewer}
                       className="w-8 text-right bg-transparent text-xs font-medium text-gray-500 focus:outline-none"
                     />
                     <span className="text-xs text-gray-500">%</span>
@@ -455,6 +483,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
               <textarea
                 value={data.notes}
                 onChange={(e) => handleChange('notes', e.target.value)}
+                disabled={isViewer}
                 rows={3}
                 className="w-full text-sm text-gray-600 bg-transparent resize-none focus:outline-none border border-transparent hover:border-gray-200 rounded p-1"
               />
@@ -464,6 +493,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
               <textarea
                 value={data.terms}
                 onChange={(e) => handleChange('terms', e.target.value)}
+                disabled={isViewer}
                 rows={3}
                 className="w-full text-sm text-gray-600 bg-transparent resize-none focus:outline-none border border-transparent hover:border-gray-200 rounded p-1"
               />

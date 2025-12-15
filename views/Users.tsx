@@ -15,6 +15,9 @@ export default function Users({ users, setUsers, currentUser }: UsersProps) {
 
   const isAdmin = currentUser.role === 'admin';
 
+  // Filter users: Admins see everyone, others see only non-admins
+  const displayedUsers = users.filter(user => isAdmin || user.role !== 'admin');
+
   const startAdd = () => {
     setEditingId(null);
     setFormData({ name: '', email: '', password: '', role: 'viewer' });
@@ -144,7 +147,7 @@ export default function Users({ users, setUsers, currentUser }: UsersProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {users.map(user => {
+            {displayedUsers.map(user => {
               const isActive = user.active !== false;
               return (
                 <tr key={user.id} className="hover:bg-gray-50">
@@ -196,7 +199,7 @@ export default function Users({ users, setUsers, currentUser }: UsersProps) {
                 </tr>
               );
             })}
-            {users.length === 0 && (
+            {displayedUsers.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-400">No users found.</td>
               </tr>

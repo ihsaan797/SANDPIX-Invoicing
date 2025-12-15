@@ -1,5 +1,5 @@
 import React from 'react';
-import { InvoiceData } from '../types';
+import { InvoiceData, User } from '../types';
 import { PlusIcon, FileTextIcon, TrashIcon, EyeIcon, DownloadIcon } from '../components/Icons';
 
 interface InvoiceListProps {
@@ -10,20 +10,25 @@ interface InvoiceListProps {
   onView: (invoice: InvoiceData) => void;
   onDownload: (invoice: InvoiceData) => void;
   onDelete: (id: string) => void;
+  currentUser: User;
 }
 
-export default function InvoiceList({ invoices, currency, onCreate, onEdit, onView, onDownload, onDelete }: InvoiceListProps) {
+export default function InvoiceList({ invoices, currency, onCreate, onEdit, onView, onDownload, onDelete, currentUser }: InvoiceListProps) {
+  const isViewer = currentUser.role === 'viewer';
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Invoices</h1>
-        <button
-          onClick={onCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-sandpix-600 text-white rounded-lg hover:bg-sandpix-700 transition-colors font-medium text-sm"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Create Invoice
-        </button>
+        {!isViewer && (
+          <button
+            onClick={onCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-sandpix-600 text-white rounded-lg hover:bg-sandpix-700 transition-colors font-medium text-sm"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Create Invoice
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -73,21 +78,26 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onVi
                       >
                         <DownloadIcon className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => onEdit(inv)}
-                        className="text-sandpix-600 hover:text-sandpix-800 font-medium text-xs border border-sandpix-200 rounded px-2 py-1 bg-sandpix-50"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          if(confirm('Are you sure you want to delete this invoice?')) onDelete(inv.id);
-                        }}
-                        className="text-red-400 hover:text-red-600 p-1"
-                        title="Delete"
-                      >
-                        <TrashIcon />
-                      </button>
+                      
+                      {!isViewer && (
+                        <>
+                          <button
+                            onClick={() => onEdit(inv)}
+                            className="text-sandpix-600 hover:text-sandpix-800 font-medium text-xs border border-sandpix-200 rounded px-2 py-1 bg-sandpix-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              if(confirm('Are you sure you want to delete this invoice?')) onDelete(inv.id);
+                            }}
+                            className="text-red-400 hover:text-red-600 p-1"
+                            title="Delete"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                  );
@@ -97,7 +107,7 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onVi
                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
                      <div className="flex flex-col items-center gap-2">
                        <FileTextIcon className="w-8 h-8 opacity-20" />
-                       <p>No invoices yet. Create your first one!</p>
+                       <p>No invoices yet. {isViewer ? '' : 'Create your first one!'}</p>
                      </div>
                    </td>
                 </tr>
