@@ -1,6 +1,6 @@
 import React from 'react';
 import { InvoiceData, User } from '../types';
-import { PlusIcon, FileTextIcon, TrashIcon, EyeIcon, DownloadIcon } from '../components/Icons';
+import { PlusIcon, FileTextIcon, TrashIcon, EyeIcon, DownloadIcon, EditIcon } from '../components/Icons';
 
 interface InvoiceListProps {
   invoices: InvoiceData[];
@@ -15,6 +15,7 @@ interface InvoiceListProps {
 
 export default function InvoiceList({ invoices, currency, onCreate, onEdit, onView, onDownload, onDelete, currentUser }: InvoiceListProps) {
   const isViewer = currentUser.role === 'viewer';
+  const isAdmin = currentUser.role === 'admin';
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -65,6 +66,7 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onVi
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end gap-2">
                       <button
+                        type="button"
                         onClick={() => onView(inv)}
                         className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded transition-colors"
                         title="View Invoice"
@@ -72,6 +74,7 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onVi
                         <EyeIcon className="w-4 h-4" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => onDownload(inv)}
                         className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded transition-colors"
                         title="Download PDF"
@@ -80,23 +83,27 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onVi
                       </button>
                       
                       {!isViewer && (
-                        <>
-                          <button
-                            onClick={() => onEdit(inv)}
-                            className="text-sandpix-600 hover:text-sandpix-800 font-medium text-xs border border-sandpix-200 rounded px-2 py-1 bg-sandpix-50"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => {
-                              if(confirm('Are you sure you want to delete this invoice?')) onDelete(inv.id);
-                            }}
-                            className="text-red-400 hover:text-red-600 p-1"
-                            title="Delete"
-                          >
-                            <TrashIcon />
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => onEdit(inv)}
+                          className="text-sandpix-600 hover:text-sandpix-800 font-medium text-xs border border-sandpix-200 rounded px-2 py-1 bg-sandpix-50 flex items-center gap-1"
+                        >
+                          <EditIcon className="w-3 h-3" /> Edit
+                        </button>
+                      )}
+
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(inv.id);
+                          }}
+                          className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
                       )}
                     </td>
                   </tr>

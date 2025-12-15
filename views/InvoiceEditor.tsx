@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InvoiceData, InvoiceItem, AppSettings, User } from '../types';
-import { PrinterIcon, PlusIcon, TrashIcon, PalmTreeIcon, ChevronLeftIcon, EyeIcon, EditIcon, DownloadIcon, MailIcon } from '../components/Icons';
+import { PrinterIcon, PlusIcon, TrashIcon, PalmTreeIcon, ChevronLeftIcon, EyeIcon, EditIcon } from '../components/Icons';
 
 interface InvoiceEditorProps {
   initialData?: InvoiceData | null;
@@ -35,476 +35,370 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
   };
 
   const [data, setData] = useState<InvoiceData>(initialData || defaultInvoice);
-  // Viewers are always in preview mode
   const [isPreview, setIsPreview] = useState(isViewer ? true : initialMode === 'preview');
 
-  useEffect(() => {
-    if (isViewer) {
-      setIsPreview(true);
-    } else {
-      setIsPreview(initialMode === 'preview');
-    }
-  }, [initialMode, isViewer]);
-
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
-
-  const handleDownloadPDF = useCallback(() => {
-    const element = document.getElementById('invoice-pdf-content');
-    
-    // Ensure we are in preview mode to capture clean UI
-    if (!isPreview) setIsPreview(true);
-
-    // Give DOM a moment to update if we just switched to preview
-    setTimeout(() => {
-        if (typeof (window as any).html2pdf !== 'undefined' && element) {
-            const opt = {
-                margin: 0.2,
-                filename: `${data.invoiceNumber || 'invoice'}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-            (window as any).html2pdf().set(opt).from(element).save();
-        } else {
-            // Fallback if library fails
-            console.warn("html2pdf library not found, falling back to print dialog");
-            window.print();
-        }
-    }, 500);
-  }, [data.invoiceNumber, isPreview]);
-
-  // Handle auto-trigger for download from list view
+  // Handle auto-print
   useEffect(() => {
     if (autoPrint) {
-      handleDownloadPDF();
+        setIsPreview(true);
+        setTimeout(() => {
+            window.print();
+        }, 500);
     }
-  }, [autoPrint, handleDownloadPDF]);
+  }, [autoPrint]);
 
-  const handleChange = (field: keyof InvoiceData, value: string | number) => {
-    if (isViewer) return;
-    setData((prev) => ({ ...prev, [field]: value }));
+  // Viewers locked to preview
+  useEffect(() => {
+      if (isViewer) setIsPreview(true);
+  }, [isViewer]);
+
+  const handleAddItem = () => {
+    setData({
+      ...data,
+      items: [...data.items, { id: crypto.randomUUID(), description: '', quantity: 1, rate: 0 }]
+    });
   };
 
-  const handleItemChange = (id: string, field: keyof InvoiceItem, value: string | number) => {
-    if (isViewer) return;
-    setData((prev) => ({
-      ...prev,
-      items: prev.items.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
-      ),
-    }));
+  const handleRemoveItem = (id: string) => {
+    if (data.items.length === 1) return;
+    setData({
+      ...data,
+      items: data.items.filter(item => item.id !== id)
+    });
   };
 
-  const addItem = () => {
-    if (isViewer) return;
-    const newItem: InvoiceItem = {
-      id: crypto.randomUUID(),
-      description: '',
-      quantity: 1,
-      rate: 0,
-    };
-    setData((prev) => ({ ...prev, items: [...prev.items, newItem] }));
+  const handleItemChange = (id: string, field: keyof InvoiceItem, value: any) => {
+    setData({
+      ...data,
+      items: data.items.map(item => item.id === id ? { ...item, [field]: value } : item)
+    });
   };
 
-  const removeItem = (id: string) => {
-    if (isViewer) return;
-    setData((prev) => ({ ...prev, items: prev.items.filter((item) => item.id !== id) }));
+  const calculateTotals = () => {
+    const subtotal = data.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+    const taxAmount = subtotal * (data.taxRate / 100);
+    const total = subtotal + taxAmount;
+    return { subtotal, taxAmount, total };
   };
 
-  const calculateSubtotal = () => {
-    return data.items.reduce((acc, item) => acc + item.quantity * item.rate, 0);
-  };
+  const { subtotal, taxAmount, total } = calculateTotals();
 
-  const subtotal = calculateSubtotal();
-  const taxAmount = subtotal * (data.taxRate / 100);
-  const grandTotal = subtotal + taxAmount;
-
-  // CSS for preview mode to match print output
-  const previewStyles = `
-    .preview-mode input, .preview-mode textarea {
-      background: transparent !important;
-      border: none !important;
-      resize: none !important;
-      padding: 0 !important;
-      box-shadow: none !important;
-    }
-    .preview-mode input::placeholder, .preview-mode textarea::placeholder {
-      color: transparent !important;
-    }
-    .preview-mode select {
-      appearance: none;
-      border: none;
-      background: transparent;
-      padding: 0;
-      pointer-events: none;
-    }
-    /* Hide items that should not be visible in preview */
-    .preview-mode .edit-only {
-      display: none !important;
-    }
-  `;
-
-  // Utility to hide elements in preview or print
-  const editOnlyClass = isPreview ? 'hidden' : 'no-print';
-
-  // Mailto Generator
-  const sendEmail = () => {
-    const subject = `Invoice ${data.invoiceNumber} from ${settings.companyName}`;
-    const body = `Dear ${data.clientName || 'Client'},%0D%0A%0D%0APlease find attached the invoice ${data.invoiceNumber} dated ${data.date}.%0D%0A%0D%0AAmount Due: ${data.currency} ${grandTotal.toFixed(2)}%0D%0A%0D%0AThank you for your business.%0D%0A%0D%0ABest regards,%0D%0A${settings.companyName}`;
-    window.location.href = `mailto:${data.clientEmail}?subject=${subject}&body=${body}`;
+  const handleSaveClick = () => {
+      if (!data.clientName) {
+          alert('Please enter a client name');
+          return;
+      }
+      onSave(data);
   };
 
   return (
-    <div className={`${isPreview ? 'fixed inset-0 z-50 bg-gray-100 overflow-y-auto' : 'flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8 w-full'}`}>
-      <style>{previewStyles}</style>
-
+    <div className="p-4 md:p-8 max-w-5xl mx-auto print:p-0 print:max-w-none">
+      
       {/* Toolbar */}
-      <div className={`${isPreview ? 'fixed top-0 left-0 right-0 bg-white shadow-md p-4 z-50 flex justify-center no-print' : 'w-full max-w-4xl mb-6 flex justify-between items-center no-print'}`}>
-        <div className={`flex justify-between items-center ${isPreview ? 'w-full max-w-4xl' : 'w-full'}`}>
-          {/* Back Button */}
-          <button
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 no-print">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <button 
             onClick={onBack}
-            disabled={isSaving}
-            className="flex items-center gap-1 text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-white rounded-full transition-colors text-gray-500"
+            title="Back to List"
           >
-            <ChevronLeftIcon />
-            Back to List
+            <ChevronLeftIcon className="w-6 h-6" />
           </button>
+          <h1 className="text-xl font-bold text-gray-800">
+            {data.id.length > 20 ? (isPreview ? 'View Invoice' : 'Edit Invoice') : 'New Invoice'}
+          </h1>
+        </div>
 
-          {/* Spacer for preview mode alignment if needed */}
-          {isPreview && <div></div>}
+        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+           {!isViewer && (
+             <button
+                onClick={() => setIsPreview(!isPreview)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+             >
+                {isPreview ? <><EditIcon className="w-4 h-4"/> Edit Mode</> : <><EyeIcon className="w-4 h-4"/> Preview</>}
+             </button>
+           )}
+           
+           <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+           >
+              <PrinterIcon className="w-4 h-4"/> Print
+           </button>
 
-          <div className="flex gap-2 ml-auto">
-             {/* Toggle Preview Button - Hidden for viewers */}
-            {!isViewer && (
-              <button
-                 onClick={() => setIsPreview(!isPreview)}
-                 disabled={isSaving}
-                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
-              >
-                 {isPreview ? (
-                   <>
-                     <EditIcon className="w-4 h-4" />
-                     Edit
-                   </>
-                 ) : (
-                   <>
-                     <EyeIcon className="w-4 h-4" />
-                     Preview
-                   </>
-                 )}
-              </button>
-            )}
-
-             {/* Send Email Button */}
-            <button
-              onClick={sendEmail}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-              title="Send via Email"
-            >
-              <MailIcon className="w-4 h-4" />
-              Send
-            </button>
-
-            {/* Download PDF Button */}
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg hover:bg-gray-900 focus:outline-none shadow-sm transition-colors disabled:opacity-50"
-              title="Download PDF"
-            >
-              <DownloadIcon className="w-4 h-4" />
-              Download PDF
-            </button>
-
-            {/* Print Button */}
-            <button
-              onClick={handlePrint}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-sandpix-600 rounded-lg hover:bg-sandpix-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sandpix-500 shadow-sm transition-colors disabled:opacity-50"
-            >
-              <PrinterIcon className="w-4 h-4" />
-              Print
-            </button>
-            
-            {/* Save Button (Edit Mode Only and NOT viewer) */}
-            {!isPreview && !isViewer && (
-              <button
-                onClick={() => onSave(data)}
+           {!isViewer && !isPreview && (
+             <button
+                onClick={handleSaveClick}
                 disabled={isSaving}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-wait flex items-center gap-2"
-              >
-                {isSaving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Saving...
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </button>
-            )}
-          </div>
+                className="flex items-center gap-2 px-6 py-2 bg-sandpix-600 text-white rounded-lg hover:bg-sandpix-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-70"
+             >
+                {isSaving ? 'Saving...' : 'Save Invoice'}
+             </button>
+           )}
         </div>
       </div>
 
-      {/* Spacer for fixed toolbar in preview */}
-      {isPreview && <div className="h-24 w-full no-print"></div>}
-
       {/* Invoice Paper */}
-      <div id="invoice-pdf-content" className={`w-full max-w-4xl bg-white shadow-xl rounded-xl overflow-hidden print-shadow-none print-full-width transition-all duration-300 ${isPreview ? 'preview-mode' : ''}`}>
+      <div className={`bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none min-h-[1000px] p-8 md:p-12 print:p-8 relative overflow-hidden transition-all duration-300 ${isPreview ? 'max-w-[210mm] mx-auto' : ''}`}>
         
-        {/* Header Color Bar */}
-        <div className="h-2 w-full bg-gradient-to-r from-sandpix-500 to-teal-400"></div>
-
-        <div className="p-8 md:p-12">
-          
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-            <div className="flex flex-col">
-               <div className="flex items-center gap-3 mb-2">
-                 {settings.logoUrl ? (
-                   <img src={settings.logoUrl} alt="Company Logo" className="h-16 w-auto object-contain" />
-                 ) : (
-                   <PalmTreeIcon className="w-10 h-10 text-sandpix-600" />
-                 )}
-                 <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">{settings.companyName}</h2>
-               </div>
-               <p className="text-gray-500 text-sm font-medium">Capture the beauty of the islands.</p>
-               {settings.gstNumber && (
-                 <p className="text-gray-400 text-xs mt-1 font-medium">GST No: {settings.gstNumber}</p>
-               )}
-            </div>
-            <div className="w-full md:w-auto text-right">
-              <h1 className="text-4xl font-light text-gray-200 uppercase tracking-widest mb-2">Invoice</h1>
-              <div className="flex flex-col gap-1 items-end">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-500 uppercase">No.</span>
-                  <input
-                    type="text"
-                    value={data.invoiceNumber}
-                    onChange={(e) => handleChange('invoiceNumber', e.target.value)}
-                    disabled={isViewer}
-                    className="text-right font-mono font-bold text-gray-800 bg-gray-50 hover:bg-white focus:bg-white border-b border-transparent hover:border-gray-300 focus:border-sandpix-500 focus:outline-none px-2 py-1 w-32 transition-colors disabled:bg-transparent"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                   <span className="text-sm font-semibold text-gray-500 uppercase">Date</span>
-                   <input
-                    type="date"
-                    value={data.date}
-                    onChange={(e) => handleChange('date', e.target.value)}
-                    disabled={isViewer}
-                    className="text-right font-mono text-gray-600 bg-gray-50 hover:bg-white focus:bg-white border-b border-transparent hover:border-gray-300 focus:border-sandpix-500 focus:outline-none px-2 py-1 w-32 transition-colors disabled:bg-transparent"
-                  />
-                </div>
-                <div className={`flex items-center gap-2 ${editOnlyClass}`}>
-                   <span className="text-sm font-semibold text-gray-500 uppercase">Status</span>
-                   <select
-                    value={data.status}
-                    onChange={(e) => handleChange('status', e.target.value)}
-                    disabled={isViewer}
-                    className="text-right font-mono text-xs font-bold uppercase bg-gray-50 border-none rounded p-1 text-gray-600 focus:ring-0"
-                   >
-                     <option value="draft">Draft</option>
-                     <option value="pending">Pending</option>
-                     <option value="paid">Paid</option>
-                   </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Addresses */}
-          <div className="flex flex-col md:flex-row gap-12 mb-12">
-            <div className="w-full md:w-1/2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">From</h3>
-              <div className="text-sm text-gray-700 space-y-1">
-                <p className="font-bold text-gray-900">{settings.companyName}</p>
-                <div className="whitespace-pre-line">{settings.companyAddress}</div>
-                <p>{settings.companyEmail}</p>
-              </div>
-            </div>
-            <div className="w-full md:w-1/2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Bill To</h3>
-              <div className="flex flex-col gap-2">
-                <input
-                  type="text"
-                  placeholder="Client Name"
-                  value={data.clientName}
-                  onChange={(e) => handleChange('clientName', e.target.value)}
-                  disabled={isViewer}
-                  className="w-full font-bold text-gray-900 placeholder-gray-300 focus:outline-none border-b border-gray-200 focus:border-sandpix-500 py-1 transition-colors bg-transparent"
-                />
-                <textarea
-                  placeholder="Client Address"
-                  value={data.clientAddress}
-                  onChange={(e) => handleChange('clientAddress', e.target.value)}
-                  disabled={isViewer}
-                  rows={3}
-                  className="w-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none border-b border-gray-200 focus:border-sandpix-500 py-1 transition-colors resize-none bg-transparent"
-                />
-                <input
-                  type="email"
-                  placeholder="client@email.com"
-                  value={data.clientEmail}
-                  onChange={(e) => handleChange('clientEmail', e.target.value)}
-                  disabled={isViewer}
-                  className="w-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none border-b border-gray-200 focus:border-sandpix-500 py-1 transition-colors bg-transparent"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Items Table */}
-          <div className="mb-10">
-            <div className="grid grid-cols-12 gap-4 border-b-2 border-gray-100 pb-3 mb-4">
-              <div className="col-span-6 md:col-span-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Description</div>
-              <div className="col-span-2 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Qty</div>
-              <div className="col-span-2 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Rate</div>
-              <div className="col-span-2 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Amount</div>
-            </div>
-
-            <div className="space-y-3">
-              {data.items.map((item) => (
-                <div key={item.id} className="group grid grid-cols-12 gap-4 items-start relative">
-                  
-                  {/* Description */}
-                  <div className="col-span-6 md:col-span-6">
-                    <textarea
-                      value={item.description}
-                      onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                      disabled={isViewer}
-                      placeholder="Item description"
-                      rows={1}
-                      className="w-full text-sm text-gray-800 placeholder-gray-300 focus:outline-none border-b border-transparent hover:border-gray-200 focus:border-sandpix-500 py-1 bg-transparent resize-none overflow-hidden"
-                      onInput={(e) => {
-                        const target = e.target as HTMLTextAreaElement;
-                        target.style.height = 'auto';
-                        target.style.height = target.scrollHeight + 'px';
-                      }}
-                    />
-                  </div>
-
-                  {/* Quantity */}
-                  <div className="col-span-2">
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                      disabled={isViewer}
-                      className="w-full text-right text-sm text-gray-600 focus:outline-none border-b border-transparent hover:border-gray-200 focus:border-sandpix-500 py-1 bg-transparent"
-                    />
-                  </div>
-
-                  {/* Rate */}
-                  <div className="col-span-2">
-                    <input
-                      type="number"
-                      value={item.rate}
-                      onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                      disabled={isViewer}
-                      className="w-full text-right text-sm text-gray-600 focus:outline-none border-b border-transparent hover:border-gray-200 focus:border-sandpix-500 py-1 bg-transparent"
-                    />
-                  </div>
-
-                  {/* Amount */}
-                  <div className="col-span-2 text-right py-1">
-                    <span className="text-sm font-medium text-gray-800">
-                      {data.currency} { (item.quantity * item.rate).toFixed(2) }
-                    </span>
-                  </div>
-
-                  {/* Delete Button (Hidden on Print & Preview & Viewer) */}
-                  {!isViewer && (
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className={`absolute -right-6 top-1.5 p-1 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ${editOnlyClass}`}
-                      title="Remove item"
-                    >
-                      <TrashIcon />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className={`mt-6 ${editOnlyClass}`}>
-              {!isViewer && (
-                <button
-                  onClick={addItem}
-                  className="flex items-center gap-2 text-sm font-semibold text-sandpix-600 hover:text-sandpix-700 transition-colors"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Add Line Item
-                </button>
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-12">
+           <div className="flex flex-col items-start gap-2"> {/* Stacked logo and name */}
+              {settings.logoUrl ? (
+                 <img src={settings.logoUrl} alt="Logo" className="h-20 w-auto object-contain" />
+              ) : (
+                 <div className="w-16 h-16 bg-sandpix-50 rounded-lg flex items-center justify-center">
+                    <PalmTreeIcon className="w-8 h-8 text-sandpix-600" />
+                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Totals */}
-          <div className="flex flex-col md:flex-row justify-end mb-12 border-t border-gray-100 pt-6">
-            <div className="w-full md:w-1/3 space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="font-medium text-gray-500">Subtotal</span>
-                <span className="font-bold text-gray-800">{data.currency} {subtotal.toFixed(2)}</span>
+              <div className="mt-2">
+                 <h2 className="font-bold text-gray-900 leading-tight" style={{ fontSize: '14pt' }}>
+                    {settings.companyName}
+                 </h2>
+                 <p className="text-sm text-gray-500 whitespace-pre-line mt-1">{settings.companyAddress}</p>
+                 <p className="text-sm text-gray-500 mt-1">{settings.companyEmail}</p>
+                 {settings.gstNumber && <p className="text-sm text-gray-500">GST: {settings.gstNumber}</p>}
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-500">Tax</span>
-                  <div className={`flex items-center gap-1 bg-gray-50 rounded px-1 ${editOnlyClass}`}>
-                    <input
-                      type="number"
-                      value={data.taxRate}
-                      onChange={(e) => handleChange('taxRate', parseFloat(e.target.value) || 0)}
-                      disabled={isViewer}
-                      className="w-8 text-right bg-transparent text-xs font-medium text-gray-500 focus:outline-none"
-                    />
-                    <span className="text-xs text-gray-500">%</span>
-                  </div>
-                  {/* Show tax rate text when in preview or print */}
-                  <span className={`text-xs text-gray-400 ${!isPreview ? 'hidden print:inline' : ''}`}>({data.taxRate}%)</span>
-                </div>
-                <span className="font-bold text-gray-800">{data.currency} {taxAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-                <span className="text-lg font-bold text-gray-900">Total</span>
-                <span className="text-2xl font-extrabold text-sandpix-600">{data.currency} {grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
+           </div>
 
-          {/* Footer Notes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-gray-100 pt-8">
-            <div>
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</h4>
-              <textarea
-                value={data.notes}
-                onChange={(e) => handleChange('notes', e.target.value)}
-                disabled={isViewer}
-                rows={3}
-                className="w-full text-sm text-gray-600 bg-transparent resize-none focus:outline-none border border-transparent hover:border-gray-200 rounded p-1"
-              />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Terms & Conditions</h4>
-              <textarea
-                value={data.terms}
-                onChange={(e) => handleChange('terms', e.target.value)}
-                disabled={isViewer}
-                rows={3}
-                className="w-full text-sm text-gray-600 bg-transparent resize-none focus:outline-none border border-transparent hover:border-gray-200 rounded p-1"
-              />
-            </div>
-          </div>
-          
-          <div className="mt-12 text-center">
-             <p className="text-xs text-gray-300">Generated by Sandpix Maldives Invoicer</p>
-          </div>
-
+           <div className="text-right w-full md:w-auto">
+              <h1 className="text-4xl font-light text-gray-300 uppercase tracking-widest mb-4">Invoice</h1>
+              <div className="space-y-2">
+                 <div className="flex justify-between md:justify-end gap-4 items-center">
+                    <label className="text-sm font-semibold text-gray-600 uppercase">Invoice #</label>
+                    {isPreview ? (
+                        <span className="text-gray-900 font-medium">{data.invoiceNumber}</span>
+                    ) : (
+                        <input 
+                           value={data.invoiceNumber}
+                           onChange={e => setData({...data, invoiceNumber: e.target.value})}
+                           className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
+                        />
+                    )}
+                 </div>
+                 <div className="flex justify-between md:justify-end gap-4 items-center">
+                    <label className="text-sm font-semibold text-gray-600 uppercase">Date</label>
+                    {isPreview ? (
+                        <span className="text-gray-900">{data.date}</span>
+                    ) : (
+                        <input 
+                           type="date"
+                           value={data.date}
+                           onChange={e => setData({...data, date: e.target.value})}
+                           className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
+                        />
+                    )}
+                 </div>
+                 <div className="flex justify-between md:justify-end gap-4 items-center">
+                    <label className="text-sm font-semibold text-gray-600 uppercase">Due Date</label>
+                    {isPreview ? (
+                        <span className="text-gray-900">{data.dueDate}</span>
+                    ) : (
+                        <input 
+                           type="date"
+                           value={data.dueDate}
+                           onChange={e => setData({...data, dueDate: e.target.value})}
+                           className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
+                        />
+                    )}
+                 </div>
+              </div>
+           </div>
         </div>
+
+        {/* Client Info */}
+        <div className="mb-12">
+           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Bill To</h3>
+           {isPreview ? (
+              <div className="text-gray-800">
+                 <p className="font-bold text-lg">{data.clientName || 'N/A'}</p>
+                 <p className="whitespace-pre-line">{data.clientAddress}</p>
+                 <p>{data.clientEmail}</p>
+              </div>
+           ) : (
+              <div className="grid gap-3 max-w-md bg-gray-50 p-4 rounded-lg border border-gray-100">
+                 <input 
+                    placeholder="Client Name" 
+                    value={data.clientName} 
+                    onChange={e => setData({...data, clientName: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 font-medium"
+                 />
+                 <textarea 
+                    placeholder="Client Address" 
+                    value={data.clientAddress} 
+                    onChange={e => setData({...data, clientAddress: e.target.value})}
+                    rows={2}
+                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 text-sm"
+                 />
+                 <input 
+                    placeholder="Client Email" 
+                    value={data.clientEmail} 
+                    onChange={e => setData({...data, clientEmail: e.target.value})}
+                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 text-sm"
+                 />
+              </div>
+           )}
+        </div>
+
+        {/* Items Table */}
+        <div className="mb-8">
+           <table className="w-full">
+              <thead>
+                 <tr className="border-b-2 border-gray-100">
+                    <th className="text-left py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[50%]">Description</th>
+                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[15%]">Quantity</th>
+                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[15%]">Rate</th>
+                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[15%]">Amount</th>
+                    {!isPreview && <th className="w-[5%]"></th>}
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                 {data.items.map((item) => (
+                    <tr key={item.id} className="group">
+                       <td className="py-4 align-top">
+                          {isPreview ? (
+                             <span className="text-gray-800 font-medium">{item.description}</span>
+                          ) : (
+                             <textarea
+                                value={item.description}
+                                onChange={e => handleItemChange(item.id, 'description', e.target.value)}
+                                placeholder="Item description"
+                                rows={1}
+                                className="w-full bg-transparent resize-none focus:outline-none font-medium text-gray-800"
+                                onInput={(e) => {
+                                   const target = e.target as HTMLTextAreaElement;
+                                   target.style.height = "auto";
+                                   target.style.height = target.scrollHeight + "px";
+                                }}
+                             />
+                          )}
+                       </td>
+                       <td className="py-4 align-top text-right">
+                          {isPreview ? (
+                             <span className="text-gray-600">{item.quantity}</span>
+                          ) : (
+                             <input
+                                type="number"
+                                min="0"
+                                value={item.quantity}
+                                onChange={e => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                                className="w-full text-right bg-transparent focus:outline-none text-gray-600"
+                             />
+                          )}
+                       </td>
+                       <td className="py-4 align-top text-right">
+                          {isPreview ? (
+                             <span className="text-gray-600">{item.rate.toLocaleString()}</span>
+                          ) : (
+                             <input
+                                type="number"
+                                min="0"
+                                value={item.rate}
+                                onChange={e => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
+                                className="w-full text-right bg-transparent focus:outline-none text-gray-600"
+                             />
+                          )}
+                       </td>
+                       <td className="py-4 align-top text-right font-medium text-gray-900">
+                          {(item.quantity * item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                       </td>
+                       {!isPreview && (
+                          <td className="py-4 align-top text-right">
+                             {data.items.length > 1 && (
+                                <button 
+                                   onClick={() => handleRemoveItem(item.id)}
+                                   className="text-red-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                   <TrashIcon className="w-4 h-4" />
+                                </button>
+                             )}
+                          </td>
+                       )}
+                    </tr>
+                 ))}
+              </tbody>
+           </table>
+           
+           {!isPreview && (
+              <button 
+                 onClick={handleAddItem}
+                 className="mt-4 flex items-center gap-2 text-sm font-medium text-sandpix-600 hover:text-sandpix-700 transition-colors"
+              >
+                 <PlusIcon className="w-4 h-4" /> Add Line Item
+              </button>
+           )}
+        </div>
+
+        {/* Totals & Notes */}
+        <div className="flex flex-col md:flex-row gap-12 border-t border-gray-100 pt-8">
+           <div className="flex-1 space-y-6">
+              <div>
+                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</h3>
+                 {isPreview ? (
+                    <p className="text-sm text-gray-600 whitespace-pre-line">{data.notes}</p>
+                 ) : (
+                    <textarea
+                       value={data.notes}
+                       onChange={e => setData({...data, notes: e.target.value})}
+                       rows={3}
+                       className="w-full text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded p-2 focus:outline-none focus:border-sandpix-500"
+                       placeholder="Add notes..."
+                    />
+                 )}
+              </div>
+              <div>
+                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Terms & Conditions</h3>
+                 {isPreview ? (
+                    <p className="text-sm text-gray-600 whitespace-pre-line">{data.terms}</p>
+                 ) : (
+                    <textarea
+                       value={data.terms}
+                       onChange={e => setData({...data, terms: e.target.value})}
+                       rows={2}
+                       className="w-full text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded p-2 focus:outline-none focus:border-sandpix-500"
+                       placeholder="Add terms..."
+                    />
+                 )}
+              </div>
+           </div>
+
+           <div className="w-full md:w-80">
+              <div className="space-y-3">
+                 <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>{settings.currencySymbol}{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-gray-600">
+                    <div className="flex items-center gap-2">
+                       <span>Tax</span>
+                       {!isPreview && (
+                          <div className="flex items-center bg-gray-100 rounded px-2">
+                             <input
+                                type="number"
+                                value={data.taxRate}
+                                onChange={e => setData({...data, taxRate: parseFloat(e.target.value) || 0})}
+                                className="w-8 bg-transparent text-xs text-right focus:outline-none py-1"
+                             />
+                             <span className="text-xs">%</span>
+                          </div>
+                       )}
+                       {isPreview && <span className="text-xs text-gray-400">({data.taxRate}%)</span>}
+                    </div>
+                    <span>{settings.currencySymbol}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                 </div>
+                 <div className="flex justify-between text-xl font-bold text-gray-900 border-t border-gray-200 pt-3">
+                    <span>Total</span>
+                    <span>{settings.currencySymbol}{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-16 text-center text-xs text-gray-400">
+           <p>Thank you for your business!</p>
+        </div>
+
       </div>
     </div>
   );
