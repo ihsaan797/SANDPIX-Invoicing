@@ -35,7 +35,12 @@ export default function Login({ onLogin, logoUrl, companyName }: LoginProps) {
       }
 
       if (data) {
-        onLogin(data as User);
+        // Check if user is active (default to true if field is missing to avoid lockout)
+        if (data.active === false) {
+           setError('Your account has been disabled. Please contact an administrator.');
+        } else {
+           onLogin(data as User);
+        }
       } else {
         setError('Invalid credentials. Please check your name/email and password.');
       }

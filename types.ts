@@ -30,6 +30,7 @@ export interface User {
   role: 'admin' | 'editor' | 'viewer';
   avatar?: string;
   password?: string;
+  active?: boolean;
 }
 
 export interface AppSettings {

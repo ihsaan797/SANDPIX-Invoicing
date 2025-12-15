@@ -163,29 +163,66 @@ export default function App() {
   const handleUsersUpdate = async (newUsersOrFn: User[] | ((prev: User[]) => User[])) => {
     const nextUsers = typeof newUsersOrFn === 'function' ? newUsersOrFn(users) : newUsersOrFn;
     
-    // Determine added or removed users
+    // Update local state immediately for responsiveness
+    setUsers(nextUsers);
+
+    // 1. Handle Deletes (Code retained for data integrity, but UI delete removed)
     const currentIds = users.map(u => u.id);
     const nextIds = nextUsers.map(u => u.id);
-    const removedIds = currentIds.filter(id => !nextIds.includes(id));
-    const addedUsers = nextUsers.filter(u => !currentIds.includes(u.id));
+    
+    // Only attempt to delete IDs that look like UUIDs (length > 20)
+    const removedIds = currentIds.filter(id => !nextIds.includes(id) && id.length > 20);
 
     if (removedIds.length > 0) {
-      await supabase.from('users').delete().in('id', removedIds);
+      const { error } = await supabase.from('users').delete().in('id', removedIds);
+      if (error) {
+        console.error("Error deleting users:", error);
+        fetchData(); // Revert state from server
+        return;
+      }
     }
 
-    if (addedUsers.length > 0) {
-      const usersToInsert = addedUsers.map(u => ({
-         name: u.name,
-         email: u.email,
-         role: u.role,
-         password: u.password
-      }));
-      await supabase.from('users').insert(usersToInsert);
-      fetchData(); // Simplest way to sync IDs
-      return; 
+    // 2. Handle Upserts (Updates & Inserts)
+    const updates = [];
+    const inserts = [];
+
+    for (const u of nextUsers) {
+      if (currentIds.includes(u.id)) {
+        // Existing user -> Update
+        // Only update if it has a real UUID, otherwise skip to avoid temp ID errors
+        if (u.id.length > 20) {
+          updates.push({
+             id: u.id,
+             name: u.name,
+             email: u.email,
+             role: u.role,
+             password: u.password,
+             active: u.active
+          });
+        }
+      } else {
+        // New user -> Insert
+        inserts.push({
+           name: u.name,
+           email: u.email,
+           role: u.role,
+           password: u.password,
+           active: u.active !== false // Default to true if not set
+        });
+      }
     }
 
-    setUsers(nextUsers);
+    if (updates.length > 0) {
+      const { error } = await supabase.from('users').upsert(updates);
+      if (error) console.error("Error updating users:", error);
+    }
+
+    if (inserts.length > 0) {
+      const { error } = await supabase.from('users').insert(inserts);
+      if (error) console.error("Error inserting users:", error);
+      // Fetch fresh data to get generated IDs for new users
+      fetchData(); 
+    }
   };
 
   // Router Actions & Data Persistence
@@ -279,9 +316,9 @@ export default function App() {
       case 'reports':
         return <Reports invoices={invoices} currency={settings.currencySymbol} />;
       case 'users':
-        return <Users users={users} setUsers={handleUsersUpdate} />;
+        return <Users users={users} setUsers={handleUsersUpdate} currentUser={currentUser!} />;
       case 'settings':
-        return <Settings settings={settings} setSettings={handleSettingsUpdate} />;
+        return <Settings settings={settings} setSettings={handleSettingsUpdate} currentUser={currentUser!} />;
       default:
         return <div>Not found</div>;
     }
