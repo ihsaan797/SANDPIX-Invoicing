@@ -7,7 +7,7 @@ import Reports from './views/Reports';
 import Users from './views/Users';
 import Settings from './views/Settings';
 import Login from './views/Login';
-import { LayoutDashboardIcon, FileTextIcon, UsersIcon, SettingsIcon, BarChartIcon, PalmTreeIcon, LogOutIcon } from './components/Icons';
+import { LayoutDashboardIcon, FileTextIcon, UsersIcon, SettingsIcon, BarChartIcon, PalmTreeIcon, LogOutIcon, MenuIcon, XIcon } from './components/Icons';
 import { supabase } from './lib/supabaseClient';
 
 type ViewState = 
@@ -23,6 +23,7 @@ export default function App() {
   const [view, setView] = useState<ViewState>({ type: 'dashboard' });
   const [loading, setLoading] = useState(false);
   const [appInitialized, setAppInitialized] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // App State
   const [settings, setSettings] = useState<AppSettings>({
@@ -281,6 +282,12 @@ export default function App() {
     setView({ type: 'invoices' });
   };
 
+  // Nav helper
+  const changeView = (newView: ViewState) => {
+    setView(newView);
+    setMobileMenuOpen(false); // Close mobile menu on nav
+  };
+
   // Views Logic
   const renderView = () => {
     if (loading && invoices.length === 0 && users.length === 0 && view.type !== 'dashboard') {
@@ -298,10 +305,10 @@ export default function App() {
         return <InvoiceList 
           invoices={invoices} 
           currency={settings.currencySymbol}
-          onCreate={() => setView({ type: 'invoice-editor', mode: 'edit' })}
-          onEdit={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'edit' })}
-          onView={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview' })}
-          onDownload={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview', autoPrint: true })}
+          onCreate={() => changeView({ type: 'invoice-editor', mode: 'edit' })}
+          onEdit={(inv) => changeView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'edit' })}
+          onView={(inv) => changeView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview' })}
+          onDownload={(inv) => changeView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview', autoPrint: true })}
           currentUser={currentUser!}
         />;
       case 'invoice-editor':
@@ -310,7 +317,7 @@ export default function App() {
           initialData={initialData} 
           settings={settings}
           onSave={handleSaveInvoice}
-          onBack={() => setView({ type: 'invoices' })} 
+          onBack={() => changeView({ type: 'invoices' })} 
           isSaving={loading}
           initialMode={view.mode || 'edit'}
           autoPrint={view.autoPrint}
@@ -351,20 +358,48 @@ export default function App() {
   const isViewer = currentUser.role === 'viewer';
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
       
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col no-print">
-        <div className="p-6 border-b border-white/10 flex items-center gap-3">
-          {settings.logoUrl ? (
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 z-20 flex items-center px-4 justify-between border-b border-white/10 shadow-md">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setMobileMenuOpen(true)} className="text-white p-1">
+            <MenuIcon className="w-6 h-6" />
+          </button>
+          <span className="font-bold text-white tracking-wide">SANDPIX</span>
+        </div>
+        {settings.logoUrl && (
              <img src={settings.logoUrl} alt="Logo" className="w-8 h-8 object-contain bg-white rounded-md" />
-          ) : (
-             <PalmTreeIcon className="w-8 h-8 text-sandpix-500" />
-          )}
-          <div>
-            <h1 className="font-bold text-lg tracking-wide">SANDPIX</h1>
-            <p className="text-xs text-gray-400">Admin Console</p>
+        )}
+      </div>
+
+      {/* Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none
+        md:relative md:translate-x-0
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="p-6 border-b border-white/10 flex items-center gap-3 justify-between md:justify-start">
+          <div className="flex items-center gap-3">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="w-8 h-8 object-contain bg-white rounded-md" />
+            ) : (
+              <PalmTreeIcon className="w-8 h-8 text-sandpix-500" />
+            )}
+            <div>
+              <h1 className="font-bold text-lg tracking-wide">SANDPIX</h1>
+              <p className="text-xs text-gray-400">Admin Console</p>
+            </div>
           </div>
+          {/* Close button for mobile */}
+          <button onClick={() => setMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+            <XIcon className="w-6 h-6" />
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -372,14 +407,14 @@ export default function App() {
              Menu
           </div>
           {!isViewer && (
-            <button onClick={() => setView({ type: 'dashboard' })} className={navItemClass(view.type === 'dashboard')}>
+            <button onClick={() => changeView({ type: 'dashboard' })} className={navItemClass(view.type === 'dashboard')}>
               <LayoutDashboardIcon /> Dashboard
             </button>
           )}
-          <button onClick={() => setView({ type: 'invoices' })} className={navItemClass(view.type === 'invoices')}>
+          <button onClick={() => changeView({ type: 'invoices' })} className={navItemClass(view.type === 'invoices')}>
             <FileTextIcon /> Invoices
           </button>
-          <button onClick={() => setView({ type: 'reports' })} className={navItemClass(view.type === 'reports')}>
+          <button onClick={() => changeView({ type: 'reports' })} className={navItemClass(view.type === 'reports')}>
             <BarChartIcon /> Reports
           </button>
           
@@ -388,19 +423,19 @@ export default function App() {
               <div className="px-4 py-2 mt-6 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                  Administration
               </div>
-              <button onClick={() => setView({ type: 'users' })} className={navItemClass(view.type === 'users')}>
+              <button onClick={() => changeView({ type: 'users' })} className={navItemClass(view.type === 'users')}>
                 <UsersIcon /> Team
               </button>
-               <button onClick={() => setView({ type: 'settings' })} className={navItemClass(view.type === 'settings')}>
+               <button onClick={() => changeView({ type: 'settings' })} className={navItemClass(view.type === 'settings')}>
                 <SettingsIcon /> Settings
               </button>
             </>
           )}
         </nav>
         
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 safe-area-bottom">
           <div className="flex items-center gap-3 px-4 py-3 mb-2">
-            <div className="w-8 h-8 rounded-full bg-sandpix-600 flex items-center justify-center text-sm font-bold">
+            <div className="w-8 h-8 rounded-full bg-sandpix-600 flex items-center justify-center text-sm font-bold shrink-0">
                {currentUser.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
@@ -418,7 +453,7 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto w-full pt-16 md:pt-0">
         {renderView()}
       </main>
     </div>

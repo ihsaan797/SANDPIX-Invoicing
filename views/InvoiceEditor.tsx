@@ -105,24 +105,24 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
           >
             <ChevronLeftIcon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-bold text-gray-800">
+          <h1 className="text-xl font-bold text-gray-800 truncate">
             {data.id.length > 20 ? (isPreview ? 'View Invoice' : 'Edit Invoice') : 'New Invoice'}
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
            {!isViewer && (
              <button
                 onClick={() => setIsPreview(!isPreview)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex-1 md:flex-none justify-center"
              >
-                {isPreview ? <><EditIcon className="w-4 h-4"/> Edit Mode</> : <><EyeIcon className="w-4 h-4"/> Preview</>}
+                {isPreview ? <><EditIcon className="w-4 h-4"/> Edit</> : <><EyeIcon className="w-4 h-4"/> Preview</>}
              </button>
            )}
            
            <button
               onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex-1 md:flex-none justify-center"
            >
               <PrinterIcon className="w-4 h-4"/> Print
            </button>
@@ -131,7 +131,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
              <button
                 onClick={handleSaveClick}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-6 py-2 bg-sandpix-600 text-white rounded-lg hover:bg-sandpix-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-70"
+                className="flex items-center gap-2 px-6 py-2 bg-sandpix-600 text-white rounded-lg hover:bg-sandpix-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-70 flex-1 md:flex-none justify-center whitespace-nowrap"
              >
                 {isSaving ? 'Saving...' : 'Save Invoice'}
              </button>
@@ -140,19 +140,19 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
       </div>
 
       {/* Invoice Paper */}
-      <div className={`bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none min-h-[1000px] p-8 md:p-12 print:p-8 relative overflow-hidden transition-all duration-300 ${isPreview ? 'max-w-[210mm] mx-auto' : ''}`}>
+      <div className={`bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none min-h-[500px] md:min-h-[1000px] p-6 md:p-12 print:p-8 relative overflow-hidden transition-all duration-300 ${isPreview ? 'max-w-[210mm] mx-auto' : ''}`}>
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-12">
-           <div className="flex flex-col items-start gap-2"> {/* Stacked logo and name */}
+        <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8 md:mb-12">
+           <div className="flex flex-col items-start gap-2 w-full md:w-auto"> {/* Stacked logo and name */}
               {settings.logoUrl ? (
-                 <img src={settings.logoUrl} alt="Logo" className="h-20 w-auto object-contain" />
+                 <img src={settings.logoUrl} alt="Logo" className="h-16 md:h-20 w-auto object-contain" />
               ) : (
                  <div className="w-16 h-16 bg-sandpix-50 rounded-lg flex items-center justify-center">
                     <PalmTreeIcon className="w-8 h-8 text-sandpix-600" />
                  </div>
               )}
-              <div className="mt-2">
+              <div className="mt-2 w-full">
                  <h2 className="font-bold text-gray-900 leading-tight" style={{ fontSize: '14pt' }}>
                     {settings.companyName}
                  </h2>
@@ -162,23 +162,23 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
               </div>
            </div>
 
-           <div className="text-right w-full md:w-auto">
-              <h1 className="text-4xl font-light text-gray-300 uppercase tracking-widest mb-4">Invoice</h1>
+           <div className="text-left md:text-right w-full md:w-auto">
+              <h1 className="text-3xl md:text-4xl font-light text-gray-300 uppercase tracking-widest mb-4">Invoice</h1>
               <div className="space-y-2">
-                 <div className="flex justify-between md:justify-end gap-4 items-center">
-                    <label className="text-sm font-semibold text-gray-600 uppercase">Invoice #</label>
+                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                    <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Invoice #</label>
                     {isPreview ? (
                         <span className="text-gray-900 font-medium">{data.invoiceNumber}</span>
                     ) : (
                         <input 
                            value={data.invoiceNumber}
                            onChange={e => setData({...data, invoiceNumber: e.target.value})}
-                           className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
+                           className="text-left md:text-right w-full md:w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
                         />
                     )}
                  </div>
-                 <div className="flex justify-between md:justify-end gap-4 items-center">
-                    <label className="text-sm font-semibold text-gray-600 uppercase">Date</label>
+                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                    <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Date</label>
                     {isPreview ? (
                         <span className="text-gray-900">{data.date}</span>
                     ) : (
@@ -186,12 +186,12 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                            type="date"
                            value={data.date}
                            onChange={e => setData({...data, date: e.target.value})}
-                           className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
+                           className="text-left md:text-right w-full md:w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
                         />
                     )}
                  </div>
-                 <div className="flex justify-between md:justify-end gap-4 items-center">
-                    <label className="text-sm font-semibold text-gray-600 uppercase">Due Date</label>
+                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                    <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Due Date</label>
                     {isPreview ? (
                         <span className="text-gray-900">{data.dueDate}</span>
                     ) : (
@@ -199,18 +199,18 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                            type="date"
                            value={data.dueDate}
                            onChange={e => setData({...data, dueDate: e.target.value})}
-                           className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
+                           className="text-left md:text-right w-full md:w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1"
                         />
                     )}
                  </div>
-                 <div className="flex justify-between md:justify-end gap-4 items-center">
-                    <label className="text-sm font-semibold text-gray-600 uppercase">Status</label>
+                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                    <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Status</label>
                     {(!isPreview && canEditStatus) ? (
                         <>
                            <select 
                               value={data.status}
                               onChange={e => setData({...data, status: e.target.value as InvoiceStatus})}
-                              className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 bg-transparent print:hidden text-black"
+                              className="text-left md:text-right w-full md:w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 bg-transparent print:hidden text-black"
                            >
                               <option value="draft">Draft</option>
                               <option value="pending">Pending</option>
@@ -240,7 +240,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                  <p>{data.clientEmail}</p>
               </div>
            ) : (
-              <div className="grid gap-3 max-w-md bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <div className="grid gap-3 w-full md:max-w-md bg-gray-50 p-4 rounded-lg border border-gray-100">
                  <input 
                     placeholder="Client Name" 
                     value={data.clientName} 
@@ -265,14 +265,14 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
         </div>
 
         {/* Items Table */}
-        <div className="mb-8">
-           <table className="w-full">
+        <div className="mb-8 overflow-x-auto">
+           <table className="w-full min-w-[600px]">
               <thead>
                  <tr className="border-b-2 border-gray-100">
-                    <th className="text-left py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[50%]">Description</th>
-                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[15%]">Quantity</th>
-                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[15%]">Rate</th>
-                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[15%]">Amount</th>
+                    <th className="text-left py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[40%] md:w-[50%]">Description</th>
+                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[20%] md:w-[15%]">Qty</th>
+                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[20%] md:w-[15%]">Rate</th>
+                    <th className="text-right py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[20%] md:w-[15%]">Amount</th>
                     {!isPreview && <th className="w-[5%]"></th>}
                  </tr>
               </thead>
@@ -281,7 +281,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                     <tr key={item.id} className="group">
                        <td className="py-4 align-top">
                           {isPreview ? (
-                             <span className="text-gray-800 font-medium">{item.description}</span>
+                             <span className="text-gray-800 font-medium whitespace-pre-wrap">{item.description}</span>
                           ) : (
                              <textarea
                                 value={item.description}
@@ -331,7 +331,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                              {data.items.length > 1 && (
                                 <button 
                                    onClick={() => handleRemoveItem(item.id)}
-                                   className="text-red-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                   className="text-red-300 hover:text-red-500 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                 >
                                    <TrashIcon className="w-4 h-4" />
                                 </button>
@@ -354,8 +354,8 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
         </div>
 
         {/* Totals & Notes */}
-        <div className="flex flex-col md:flex-row gap-12 border-t border-gray-100 pt-8">
-           <div className="flex-1 space-y-6">
+        <div className="flex flex-col md:flex-row gap-8 md:gap-12 border-t border-gray-100 pt-8">
+           <div className="flex-1 space-y-6 order-2 md:order-1">
               <div>
                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</h3>
                  {isPreview ? (
@@ -386,7 +386,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
               </div>
            </div>
 
-           <div className="w-full md:w-80">
+           <div className="w-full md:w-80 order-1 md:order-2">
               <div className="space-y-3">
                  <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
@@ -394,7 +394,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                  </div>
                  <div className="flex justify-between items-center text-gray-600">
                     <div className="flex items-center gap-2">
-                       <span>Tax</span>
+                       <span>GST</span>
                        {!isPreview && (
                           <div className="flex items-center bg-gray-100 rounded px-2">
                              <input

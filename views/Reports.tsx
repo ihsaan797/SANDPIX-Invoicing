@@ -41,38 +41,38 @@ export default function Reports({ invoices, currency }: ReportsProps) {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto w-full">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">
       {/* Header & Controls - Hidden on Print */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 no-print">
         <div>
            <h1 className="text-2xl font-bold text-gray-800">Financial Reports</h1>
            <p className="text-sm text-gray-500">Generate reports for specific time periods.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 items-end">
-          <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex flex-col">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end w-full md:w-auto">
+          <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm w-full sm:w-auto">
+            <div className="flex flex-col flex-1">
               <label className="text-[10px] uppercase font-bold text-gray-400 px-2">From</label>
               <input 
                 type="date" 
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="text-sm font-medium text-gray-700 focus:outline-none px-2 bg-transparent"
+                className="text-sm font-medium text-gray-700 focus:outline-none px-2 bg-transparent w-full"
               />
             </div>
             <div className="h-8 w-px bg-gray-200 mx-1"></div>
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1">
               <label className="text-[10px] uppercase font-bold text-gray-400 px-2">To</label>
               <input 
                 type="date" 
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="text-sm font-medium text-gray-700 focus:outline-none px-2 bg-transparent"
+                className="text-sm font-medium text-gray-700 focus:outline-none px-2 bg-transparent w-full"
               />
             </div>
           </div>
           <button 
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-3 bg-sandpix-600 text-white rounded-lg hover:bg-sandpix-700 transition-colors font-medium text-sm shadow-sm"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-sandpix-600 text-white rounded-lg hover:bg-sandpix-700 transition-colors font-medium text-sm shadow-sm"
           >
             <PrinterIcon className="w-4 h-4" />
             Print Report
@@ -90,7 +90,7 @@ export default function Reports({ invoices, currency }: ReportsProps) {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100 border-b border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100 border-b border-gray-100">
           <div className="p-6">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Revenue</p>
             <p className="text-2xl font-bold text-gray-900">{currency}{stats.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -111,7 +111,7 @@ export default function Reports({ invoices, currency }: ReportsProps) {
 
         {/* Detailed Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
+          <table className="w-full text-left text-sm text-gray-600 min-w-[600px]">
             <thead className="bg-gray-50 text-xs uppercase font-semibold text-gray-500 border-b border-gray-100">
               <tr>
                 <th className="px-6 py-3">Date</th>
