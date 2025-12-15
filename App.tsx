@@ -281,45 +281,6 @@ export default function App() {
     setView({ type: 'invoices' });
   };
 
-  const handleDeleteInvoice = async (id: string) => {
-    if (!currentUser || currentUser.role !== 'admin') {
-      alert("Only administrators can delete invoices.");
-      return;
-    }
-
-    if (window.confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
-      try {
-        // 1. Manually delete items first to ensure complete cleanup
-        const { error: itemsError } = await supabase
-          .from('invoice_items')
-          .delete()
-          .eq('invoice_id', id);
-        
-        if (itemsError) {
-            console.error("Error deleting invoice items:", itemsError);
-            throw new Error("Failed to delete invoice items: " + itemsError.message);
-        }
-
-        // 2. Delete the invoice record
-        const { error } = await supabase
-          .from('invoices')
-          .delete()
-          .eq('id', id);
-        
-        if (error) {
-            console.error("Error deleting invoice:", error);
-            throw new Error("Failed to delete invoice record: " + error.message);
-        }
-
-        // 3. Update Local State
-        setInvoices(prev => prev.filter(i => i.id !== id));
-
-      } catch (err: any) {
-        alert(err.message || "An unexpected error occurred while deleting.");
-      }
-    }
-  };
-
   // Views Logic
   const renderView = () => {
     if (loading && invoices.length === 0 && users.length === 0 && view.type !== 'dashboard') {
@@ -341,7 +302,6 @@ export default function App() {
           onEdit={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'edit' })}
           onView={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview' })}
           onDownload={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview', autoPrint: true })}
-          onDelete={handleDeleteInvoice}
           currentUser={currentUser!}
         />;
       case 'invoice-editor':

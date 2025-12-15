@@ -1,6 +1,6 @@
 import React from 'react';
 import { InvoiceData, User } from '../types';
-import { PlusIcon, FileTextIcon, TrashIcon, EyeIcon, DownloadIcon, EditIcon } from '../components/Icons';
+import { PlusIcon, FileTextIcon, EyeIcon, DownloadIcon, EditIcon } from '../components/Icons';
 
 interface InvoiceListProps {
   invoices: InvoiceData[];
@@ -9,11 +9,10 @@ interface InvoiceListProps {
   onEdit: (invoice: InvoiceData) => void;
   onView: (invoice: InvoiceData) => void;
   onDownload: (invoice: InvoiceData) => void;
-  onDelete: (id: string) => void;
   currentUser: User;
 }
 
-export default function InvoiceList({ invoices, currency, onCreate, onEdit, onView, onDownload, onDelete, currentUser }: InvoiceListProps) {
+export default function InvoiceList({ invoices, currency, onCreate, onEdit, onView, onDownload, currentUser }: InvoiceListProps) {
   const isViewer = currentUser.role === 'viewer';
   const isAdmin = currentUser.role === 'admin';
 
@@ -89,20 +88,6 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onVi
                           className="text-sandpix-600 hover:text-sandpix-800 font-medium text-xs border border-sandpix-200 rounded px-2 py-1 bg-sandpix-50 flex items-center gap-1"
                         >
                           <EditIcon className="w-3 h-3" /> Edit
-                        </button>
-                      )}
-
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(inv.id);
-                          }}
-                          className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
-                          title="Delete"
-                        >
-                          <TrashIcon className="w-4 h-4" />
                         </button>
                       )}
                     </td>

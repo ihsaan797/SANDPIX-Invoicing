@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { InvoiceData, InvoiceItem, AppSettings, User } from '../types';
+import { InvoiceData, InvoiceItem, AppSettings, User, InvoiceStatus } from '../types';
 import { PrinterIcon, PlusIcon, TrashIcon, PalmTreeIcon, ChevronLeftIcon, EyeIcon, EditIcon } from '../components/Icons';
 
 interface InvoiceEditorProps {
@@ -15,6 +15,7 @@ interface InvoiceEditorProps {
 
 export default function InvoiceEditor({ initialData, settings, onSave, onBack, isSaving = false, initialMode = 'edit', autoPrint = false, currentUser }: InvoiceEditorProps) {
   const isViewer = currentUser.role === 'viewer';
+  const canEditStatus = ['admin', 'editor'].includes(currentUser.role);
   
   const defaultInvoice: InvoiceData = {
     id: crypto.randomUUID(),
@@ -202,6 +203,29 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                         />
                     )}
                  </div>
+                 <div className="flex justify-between md:justify-end gap-4 items-center">
+                    <label className="text-sm font-semibold text-gray-600 uppercase">Status</label>
+                    {(!isPreview && canEditStatus) ? (
+                        <>
+                           <select 
+                              value={data.status}
+                              onChange={e => setData({...data, status: e.target.value as InvoiceStatus})}
+                              className="text-right w-32 border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 bg-transparent print:hidden text-black"
+                           >
+                              <option value="draft">Draft</option>
+                              <option value="pending">Pending</option>
+                              <option value="paid">Paid</option>
+                           </select>
+                           <span className="hidden print:block font-medium capitalize text-black">
+                              {data.status}
+                           </span>
+                        </>
+                    ) : (
+                        <span className="font-medium capitalize text-black">
+                           {data.status}
+                        </span>
+                    )}
+                 </div>
               </div>
            </div>
         </div>
@@ -210,7 +234,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
         <div className="mb-12">
            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Bill To</h3>
            {isPreview ? (
-              <div className="text-gray-800">
+              <div className="text-black">
                  <p className="font-bold text-lg">{data.clientName || 'N/A'}</p>
                  <p className="whitespace-pre-line">{data.clientAddress}</p>
                  <p>{data.clientEmail}</p>
@@ -221,20 +245,20 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                     placeholder="Client Name" 
                     value={data.clientName} 
                     onChange={e => setData({...data, clientName: e.target.value})}
-                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 font-medium"
+                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 font-medium text-black"
                  />
                  <textarea 
                     placeholder="Client Address" 
                     value={data.clientAddress} 
                     onChange={e => setData({...data, clientAddress: e.target.value})}
                     rows={2}
-                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 text-sm"
+                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 text-sm text-black"
                  />
                  <input 
                     placeholder="Client Email" 
                     value={data.clientEmail} 
                     onChange={e => setData({...data, clientEmail: e.target.value})}
-                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 text-sm"
+                    className="w-full bg-transparent border-b border-gray-200 focus:border-sandpix-500 focus:outline-none py-1 text-sm text-black"
                  />
               </div>
            )}
@@ -377,12 +401,12 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                                 type="number"
                                 value={data.taxRate}
                                 onChange={e => setData({...data, taxRate: parseFloat(e.target.value) || 0})}
-                                className="w-8 bg-transparent text-xs text-right focus:outline-none py-1"
+                                className="w-8 bg-transparent text-xs text-right focus:outline-none py-1 text-black"
                              />
                              <span className="text-xs">%</span>
                           </div>
                        )}
-                       {isPreview && <span className="text-xs text-gray-400">({data.taxRate}%)</span>}
+                       {isPreview && <span className="text-xs text-gray-900">({data.taxRate}%)</span>}
                     </div>
                     <span>{settings.currencySymbol}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                  </div>
