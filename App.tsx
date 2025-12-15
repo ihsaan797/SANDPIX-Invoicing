@@ -6,20 +6,23 @@ import InvoiceEditor from './views/InvoiceEditor';
 import Reports from './views/Reports';
 import Users from './views/Users';
 import Settings from './views/Settings';
+import Login from './views/Login';
 import { LayoutDashboardIcon, FileTextIcon, UsersIcon, SettingsIcon, BarChartIcon, PalmTreeIcon, LogOutIcon } from './components/Icons';
 import { supabase } from './lib/supabaseClient';
 
 type ViewState = 
   | { type: 'dashboard' }
   | { type: 'invoices' }
-  | { type: 'invoice-editor'; invoiceId?: string }
+  | { type: 'invoice-editor'; invoiceId?: string; mode?: 'edit' | 'preview'; autoPrint?: boolean }
   | { type: 'reports' }
   | { type: 'users' }
   | { type: 'settings' };
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [view, setView] = useState<ViewState>({ type: 'dashboard' });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [appInitialized, setAppInitialized] = useState(false);
   
   // App State
   const [settings, setSettings] = useState<AppSettings>({
@@ -35,12 +38,25 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
 
+  // Check for persisted user session
+  useEffect(() => {
+    const storedUser = localStorage.getItem('sandpix_user');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('sandpix_user');
+      }
+    }
+    setAppInitialized(true);
+  }, []);
+
   // Fetch Data from Supabase
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      // 1. Fetch Settings
+      // 1. Fetch Settings - Always fetch settings to display logo on Login screen
       const { data: settingsData } = await supabase.from('settings').select('*').single();
       if (settingsData) {
         setSettings({
@@ -52,6 +68,11 @@ export default function App() {
           currencySymbol: settingsData.currency_symbol,
           logoUrl: settingsData.logo_url
         });
+      }
+
+      // If no user is logged in, we only needed the settings (branding). Stop here.
+      if (!currentUser) {
+        return;
       }
 
       // 2. Fetch Users
@@ -97,8 +118,21 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Fetch data when app initializes or user changes
     fetchData();
-  }, []);
+  }, [currentUser]);
+
+  // Auth Actions
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('sandpix_user', JSON.stringify(user));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('sandpix_user');
+    setView({ type: 'dashboard' });
+  };
 
   // Sync Settings
   const handleSettingsUpdate = async (newSettingsOrFn: AppSettings | ((prev: AppSettings) => AppSettings)) => {
@@ -130,18 +164,6 @@ export default function App() {
     const nextUsers = typeof newUsersOrFn === 'function' ? newUsersOrFn(users) : newUsersOrFn;
     
     // Determine added or removed users
-    // For simplicity in this demo, we'll assume we process specific add/delete actions in the View,
-    // but React state setters replace the whole array.
-    // To handle this cleanly with the current View props structure, we will:
-    // 1. Identify if it's an Add or Delete based on length comparison or just sync the diff.
-    // Ideally, Views should call onAddUser / onDeleteUser. 
-    // BUT, to keep refactoring minimal, let's look at how Users.tsx works: 
-    // It calls setUsers([...users, newUser]) or setUsers(filtered).
-    
-    // Strategy: We will perform the DB operation based on diffing logic or assume the View is updated to call specific handlers?
-    // Let's modify the View props slightly? No, let's keep the prop signature matching React.Dispatch but intercept it.
-    
-    // Find removed IDs
     const currentIds = users.map(u => u.id);
     const nextIds = nextUsers.map(u => u.id);
     const removedIds = currentIds.filter(id => !nextIds.includes(id));
@@ -153,17 +175,12 @@ export default function App() {
 
     if (addedUsers.length > 0) {
       const usersToInsert = addedUsers.map(u => ({
-         // id: u.id, // Let Supabase generate ID or use the one from frontend if it's UUID.
-         // View uses Date.now(), which isn't UUID. 
-         // We should really let the View generate UUIDs or let Supabase do it.
-         // For now, let's just insert name/email/role and let Supabase gen ID, then reload?
-         // OR, we just update local state and insert.
          name: u.name,
          email: u.email,
-         role: u.role
+         role: u.role,
+         password: u.password
       }));
       await supabase.from('users').insert(usersToInsert);
-      // We should ideally reload users to get real UUIDs, but for now:
       fetchData(); // Simplest way to sync IDs
       return; 
     }
@@ -227,7 +244,7 @@ export default function App() {
 
   // Views Logic
   const renderView = () => {
-    if (loading && invoices.length === 0 && users.length === 0) {
+    if (loading && invoices.length === 0 && users.length === 0 && view.type !== 'dashboard') {
       return (
         <div className="flex h-full items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sandpix-600"></div>
@@ -242,8 +259,10 @@ export default function App() {
         return <InvoiceList 
           invoices={invoices} 
           currency={settings.currencySymbol}
-          onCreate={() => setView({ type: 'invoice-editor' })}
-          onEdit={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id })}
+          onCreate={() => setView({ type: 'invoice-editor', mode: 'edit' })}
+          onEdit={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'edit' })}
+          onView={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview' })}
+          onDownload={(inv) => setView({ type: 'invoice-editor', invoiceId: inv.id, mode: 'preview', autoPrint: true })}
           onDelete={handleDeleteInvoice}
         />;
       case 'invoice-editor':
@@ -254,6 +273,8 @@ export default function App() {
           onSave={handleSaveInvoice}
           onBack={() => setView({ type: 'invoices' })} 
           isSaving={loading}
+          initialMode={view.mode || 'edit'}
+          autoPrint={view.autoPrint}
         />;
       case 'reports':
         return <Reports invoices={invoices} currency={settings.currencySymbol} />;
@@ -268,6 +289,15 @@ export default function App() {
 
   const navItemClass = (active: boolean) => 
     `flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${active ? 'bg-sandpix-600 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`;
+
+  if (!appInitialized) {
+    return null; // or a loading spinner
+  }
+
+  // Login Gate
+  if (!currentUser) {
+    return <Login onLogin={handleLogin} logoUrl={settings.logoUrl} companyName={settings.companyName} />;
+  }
 
   // If editing/viewing invoice (Print Mode checks), render simple Layout or Full screen
   if (view.type === 'invoice-editor') {
@@ -296,6 +326,9 @@ export default function App() {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <div className="px-4 py-2 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+             Menu
+          </div>
           <button onClick={() => setView({ type: 'dashboard' })} className={navItemClass(view.type === 'dashboard')}>
             <LayoutDashboardIcon /> Dashboard
           </button>
@@ -305,16 +338,32 @@ export default function App() {
           <button onClick={() => setView({ type: 'reports' })} className={navItemClass(view.type === 'reports')}>
             <BarChartIcon /> Reports
           </button>
+          
+          <div className="px-4 py-2 mt-6 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+             Administration
+          </div>
           <button onClick={() => setView({ type: 'users' })} className={navItemClass(view.type === 'users')}>
-            <UsersIcon /> Users
+            <UsersIcon /> Team
           </button>
            <button onClick={() => setView({ type: 'settings' })} className={navItemClass(view.type === 'settings')}>
             <SettingsIcon /> Settings
           </button>
         </nav>
-
+        
         <div className="p-4 border-t border-white/10">
-          <button className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors w-full">
+          <div className="flex items-center gap-3 px-4 py-3 mb-2">
+            <div className="w-8 h-8 rounded-full bg-sandpix-600 flex items-center justify-center text-sm font-bold">
+               {currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 overflow-hidden">
+               <p className="text-sm font-medium truncate">{currentUser.name}</p>
+               <p className="text-xs text-gray-400 truncate capitalize">{currentUser.role}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-red-300 hover:text-red-100 hover:bg-white/5 rounded-lg transition-colors w-full"
+          >
             <LogOutIcon /> Sign Out
           </button>
         </div>

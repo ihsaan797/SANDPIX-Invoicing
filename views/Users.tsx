@@ -9,7 +9,7 @@ interface UsersProps {
 
 export default function Users({ users, setUsers }: UsersProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'viewer' as const });
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'viewer' as const });
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,11 +17,12 @@ export default function Users({ users, setUsers }: UsersProps) {
       id: Date.now().toString(),
       name: newUser.name,
       email: newUser.email,
+      password: newUser.password,
       role: newUser.role,
     };
     setUsers([...users, user]);
     setIsAdding(false);
-    setNewUser({ name: '', email: '', role: 'viewer' });
+    setNewUser({ name: '', email: '', password: '', role: 'viewer' });
   };
 
   const handleDelete = (id: string) => {
@@ -47,7 +48,7 @@ export default function Users({ users, setUsers }: UsersProps) {
         <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-6 max-w-2xl">
           <form onSubmit={handleAdd} className="flex flex-col gap-4">
              <h3 className="font-semibold text-gray-700">Add New User</h3>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <input 
                  required
                  placeholder="Full Name" 
@@ -61,6 +62,13 @@ export default function Users({ users, setUsers }: UsersProps) {
                  placeholder="Email Address" 
                  value={newUser.email}
                  onChange={e => setNewUser({...newUser, email: e.target.value})}
+                 className="px-3 py-2 border rounded focus:outline-none focus:ring-1 focus:ring-sandpix-500"
+               />
+               <input 
+                 type="text"
+                 placeholder="Password" 
+                 value={newUser.password}
+                 onChange={e => setNewUser({...newUser, password: e.target.value})}
                  className="px-3 py-2 border rounded focus:outline-none focus:ring-1 focus:ring-sandpix-500"
                />
                <select 
@@ -87,6 +95,7 @@ export default function Users({ users, setUsers }: UsersProps) {
             <tr>
               <th className="px-6 py-3">Name</th>
               <th className="px-6 py-3">Email</th>
+              <th className="px-6 py-3">Password</th>
               <th className="px-6 py-3">Role</th>
               <th className="px-6 py-3 text-right">Actions</th>
             </tr>
@@ -96,6 +105,7 @@ export default function Users({ users, setUsers }: UsersProps) {
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
                 <td className="px-6 py-4">{user.email}</td>
+                <td className="px-6 py-4 font-mono text-gray-500">{user.password || '-'}</td>
                 <td className="px-6 py-4">
                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold uppercase">{user.role}</span>
                 </td>
@@ -106,6 +116,11 @@ export default function Users({ users, setUsers }: UsersProps) {
                 </td>
               </tr>
             ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-400">No users found.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

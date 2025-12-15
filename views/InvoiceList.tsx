@@ -1,16 +1,18 @@
 import React from 'react';
 import { InvoiceData } from '../types';
-import { PlusIcon, FileTextIcon, TrashIcon } from '../components/Icons';
+import { PlusIcon, FileTextIcon, TrashIcon, EyeIcon, DownloadIcon } from '../components/Icons';
 
 interface InvoiceListProps {
   invoices: InvoiceData[];
   currency: string;
   onCreate: () => void;
   onEdit: (invoice: InvoiceData) => void;
+  onView: (invoice: InvoiceData) => void;
+  onDownload: (invoice: InvoiceData) => void;
   onDelete: (id: string) => void;
 }
 
-export default function InvoiceList({ invoices, currency, onCreate, onEdit, onDelete }: InvoiceListProps) {
+export default function InvoiceList({ invoices, currency, onCreate, onEdit, onView, onDownload, onDelete }: InvoiceListProps) {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -58,6 +60,20 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onDe
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end gap-2">
                       <button
+                        onClick={() => onView(inv)}
+                        className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded transition-colors"
+                        title="View Invoice"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDownload(inv)}
+                        className="text-gray-500 hover:text-gray-700 p-1.5 hover:bg-gray-100 rounded transition-colors"
+                        title="Download PDF"
+                      >
+                        <DownloadIcon className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => onEdit(inv)}
                         className="text-sandpix-600 hover:text-sandpix-800 font-medium text-xs border border-sandpix-200 rounded px-2 py-1 bg-sandpix-50"
                       >
@@ -68,6 +84,7 @@ export default function InvoiceList({ invoices, currency, onCreate, onEdit, onDe
                           if(confirm('Are you sure you want to delete this invoice?')) onDelete(inv.id);
                         }}
                         className="text-red-400 hover:text-red-600 p-1"
+                        title="Delete"
                       >
                         <TrashIcon />
                       </button>

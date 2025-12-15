@@ -8,9 +8,11 @@ interface InvoiceEditorProps {
   onSave: (data: InvoiceData) => void;
   onBack: () => void;
   isSaving?: boolean;
+  initialMode?: 'edit' | 'preview';
+  autoPrint?: boolean;
 }
 
-export default function InvoiceEditor({ initialData, settings, onSave, onBack, isSaving = false }: InvoiceEditorProps) {
+export default function InvoiceEditor({ initialData, settings, onSave, onBack, isSaving = false, initialMode = 'edit', autoPrint = false }: InvoiceEditorProps) {
   const defaultInvoice: InvoiceData = {
     id: crypto.randomUUID(),
     invoiceNumber: `INV-${Math.floor(Math.random() * 10000)}`,
@@ -30,11 +32,47 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
   };
 
   const [data, setData] = useState<InvoiceData>(initialData || defaultInvoice);
-  const [isPreview, setIsPreview] = useState(false);
+  const [isPreview, setIsPreview] = useState(initialMode === 'preview');
+
+  useEffect(() => {
+    setIsPreview(initialMode === 'preview');
+  }, [initialMode]);
 
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
+
+  const handleDownloadPDF = useCallback(() => {
+    const element = document.getElementById('invoice-pdf-content');
+    
+    // Ensure we are in preview mode to capture clean UI
+    if (!isPreview) setIsPreview(true);
+
+    // Give DOM a moment to update if we just switched to preview
+    setTimeout(() => {
+        if (typeof (window as any).html2pdf !== 'undefined' && element) {
+            const opt = {
+                margin: 0.2,
+                filename: `${data.invoiceNumber || 'invoice'}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+            (window as any).html2pdf().set(opt).from(element).save();
+        } else {
+            // Fallback if library fails
+            console.warn("html2pdf library not found, falling back to print dialog");
+            window.print();
+        }
+    }, 500);
+  }, [data.invoiceNumber, isPreview]);
+
+  // Handle auto-trigger for download from list view
+  useEffect(() => {
+    if (autoPrint) {
+      handleDownloadPDF();
+    }
+  }, [autoPrint, handleDownloadPDF]);
 
   const handleChange = (field: keyof InvoiceData, value: string | number) => {
     setData((prev) => ({ ...prev, [field]: value }));
@@ -113,17 +151,15 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
       {/* Toolbar */}
       <div className={`${isPreview ? 'fixed top-0 left-0 right-0 bg-white shadow-md p-4 z-50 flex justify-center no-print' : 'w-full max-w-4xl mb-6 flex justify-between items-center no-print'}`}>
         <div className={`flex justify-between items-center ${isPreview ? 'w-full max-w-4xl' : 'w-full'}`}>
-          {/* Back Button (only in edit mode) */}
-          {!isPreview && (
-            <button
-              onClick={onBack}
-              disabled={isSaving}
-              className="flex items-center gap-1 text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50"
-            >
-              <ChevronLeftIcon />
-              Back to List
-            </button>
-          )}
+          {/* Back Button */}
+          <button
+            onClick={onBack}
+            disabled={isSaving}
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50"
+          >
+            <ChevronLeftIcon />
+            Back to List
+          </button>
 
           {/* Spacer for preview mode alignment if needed */}
           {isPreview && <div></div>}
@@ -160,7 +196,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
 
             {/* Download PDF Button */}
             <button
-              onClick={handlePrint}
+              onClick={handleDownloadPDF}
               disabled={isSaving}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg hover:bg-gray-900 focus:outline-none shadow-sm transition-colors disabled:opacity-50"
               title="Download PDF"
@@ -204,7 +240,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
       {isPreview && <div className="h-24 w-full no-print"></div>}
 
       {/* Invoice Paper */}
-      <div className={`w-full max-w-4xl bg-white shadow-xl rounded-xl overflow-hidden print-shadow-none print-full-width transition-all duration-300 ${isPreview ? 'preview-mode' : ''}`}>
+      <div id="invoice-pdf-content" className={`w-full max-w-4xl bg-white shadow-xl rounded-xl overflow-hidden print-shadow-none print-full-width transition-all duration-300 ${isPreview ? 'preview-mode' : ''}`}>
         
         {/* Header Color Bar */}
         <div className="h-2 w-full bg-gradient-to-r from-sandpix-500 to-teal-400"></div>

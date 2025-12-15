@@ -29,6 +29,7 @@ export interface User {
   email: string;
   role: 'admin' | 'editor' | 'viewer';
   avatar?: string;
+  password?: string;
 }
 
 export interface AppSettings {
