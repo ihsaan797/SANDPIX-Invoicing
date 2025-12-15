@@ -140,11 +140,16 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
       </div>
 
       {/* Invoice Paper */}
-      <div className={`bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none min-h-[500px] md:min-h-[1000px] p-6 md:p-12 print:p-8 relative overflow-hidden transition-all duration-300 ${isPreview ? 'max-w-[210mm] mx-auto' : ''}`}>
+      <div 
+        className={`bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none min-h-[500px] md:min-h-[1000px] relative transition-all duration-300 
+        ${isPreview 
+          ? 'max-w-[210mm] min-w-[210mm] mx-auto p-12 overflow-hidden' 
+          : 'p-6 md:p-12 overflow-hidden'}`}
+      >
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8 md:mb-12">
-           <div className="flex flex-col items-start gap-2 w-full md:w-auto"> {/* Stacked logo and name */}
+        <div className={`${isPreview ? 'flex flex-row' : 'flex flex-col md:flex-row'} justify-between items-start gap-8 mb-8 md:mb-12`}>
+           <div className={`flex flex-col items-start gap-2 ${isPreview ? 'w-auto' : 'w-full md:w-auto'}`}> {/* Stacked logo and name */}
               {settings.logoUrl ? (
                  <img src={settings.logoUrl} alt="Logo" className="h-16 md:h-20 w-auto object-contain" />
               ) : (
@@ -162,10 +167,10 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
               </div>
            </div>
 
-           <div className="text-left md:text-right w-full md:w-auto">
+           <div className={`${isPreview ? 'text-right w-auto' : 'text-left md:text-right w-full md:w-auto'}`}>
               <h1 className="text-3xl md:text-4xl font-light text-gray-300 uppercase tracking-widest mb-4">Invoice</h1>
               <div className="space-y-2">
-                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                 <div className={`${isPreview ? 'flex flex-row justify-end gap-4 items-center' : 'flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center'}`}>
                     <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Invoice #</label>
                     {isPreview ? (
                         <span className="text-gray-900 font-medium">{data.invoiceNumber}</span>
@@ -177,7 +182,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                         />
                     )}
                  </div>
-                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                 <div className={`${isPreview ? 'flex flex-row justify-end gap-4 items-center' : 'flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center'}`}>
                     <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Date</label>
                     {isPreview ? (
                         <span className="text-gray-900">{data.date}</span>
@@ -190,7 +195,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                         />
                     )}
                  </div>
-                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                 <div className={`${isPreview ? 'flex flex-row justify-end gap-4 items-center' : 'flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center'}`}>
                     <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Due Date</label>
                     {isPreview ? (
                         <span className="text-gray-900">{data.dueDate}</span>
@@ -203,7 +208,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
                         />
                     )}
                  </div>
-                 <div className="flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center">
+                 <div className={`${isPreview ? 'flex flex-row justify-end gap-4 items-center' : 'flex flex-col md:flex-row justify-between md:justify-end gap-1 md:gap-4 items-start md:items-center'}`}>
                     <label className="text-xs md:text-sm font-semibold text-gray-600 uppercase">Status</label>
                     {(!isPreview && canEditStatus) ? (
                         <>
@@ -354,8 +359,8 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
         </div>
 
         {/* Totals & Notes */}
-        <div className="flex flex-col md:flex-row gap-8 md:gap-12 border-t border-gray-100 pt-8">
-           <div className="flex-1 space-y-6 order-2 md:order-1">
+        <div className={`${isPreview ? 'flex flex-row gap-12' : 'flex flex-col md:flex-row gap-8 md:gap-12'} border-t border-gray-100 pt-8`}>
+           <div className={`flex-1 space-y-6 ${isPreview ? 'order-1' : 'order-2 md:order-1'}`}>
               <div>
                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</h3>
                  {isPreview ? (
@@ -386,7 +391,7 @@ export default function InvoiceEditor({ initialData, settings, onSave, onBack, i
               </div>
            </div>
 
-           <div className="w-full md:w-80 order-1 md:order-2">
+           <div className={`${isPreview ? 'w-80 order-2' : 'w-full md:w-80 order-1 md:order-2'}`}>
               <div className="space-y-3">
                  <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
