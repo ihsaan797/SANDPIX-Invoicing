@@ -1,4 +1,5 @@
 export type InvoiceStatus = 'draft' | 'pending' | 'paid';
+export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
 
 export interface InvoiceItem {
   id: string;
@@ -13,6 +14,22 @@ export interface InvoiceData {
   status: InvoiceStatus;
   date: string;
   dueDate: string;
+  clientName: string;
+  clientAddress: string;
+  clientEmail: string;
+  currency: string;
+  taxRate: number;
+  notes: string;
+  terms: string;
+  items: InvoiceItem[];
+}
+
+export interface QuotationData {
+  id: string;
+  quotationNumber: string;
+  status: QuotationStatus;
+  date: string;
+  validUntil: string;
   clientName: string;
   clientAddress: string;
   clientEmail: string;
